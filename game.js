@@ -78,6 +78,7 @@ function addBox(cx, cy, cz, w, h, d, mat, opts = {}) {
   if (opts.appear) { mesh.visible = false; box.disabled = true; box.appear = true; }
   if (!opts.noCollide) colliders.push(box);
   if (opts.portalable) { mesh.userData.portalable = true; portalables.push(mesh); }
+  if (opts.id) namedMeshes[opts.id] = mesh;
   return box;
 }
 
@@ -636,6 +637,43 @@ let levelT0 = 0;
 const fmtT = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 let lasers = [], receivers = [], bridges = [];
 let interactDef = null, finaleActive = false, finaleT0 = 0, firedSteps = new Set(), seaMeshes = [], appearMeshes = [], appearLights = [], posterMeshes = [];
+let namedMeshes = {}, wheatDoor = null, whiteFade = 0, whiteDone = null;
+function fadeToWhite(cb) {
+  whiteFade = 0.0001; whiteDone = cb;
+  fadeblkEl.style.background = '#fdf6e8';
+  tone(220, 660, 'sine', 2.6, 0.08);
+}
+function startWheatDoor() {
+  const mesh = namedMeshes['wheatdoor']; if (!mesh || wheatDoor) return;
+  wheatDoor = { mesh, t: 0, openFt: clock.elapsedTime - finaleT0, fired: false };
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.1),
+    new THREE.MeshBasicMaterial({ color: 0xfff3d8, transparent: true, opacity: 0 }));
+  glow.position.set(46.02, 1.5, 0); glow.rotation.y = -Math.PI / 2; world.add(glow);
+  const dl = new THREE.PointLight(0xffd9a0, 0, 14); dl.position.set(45.0, 1.8, 0); scene.add(dl);
+  wheatDoor.glow = glow; wheatDoor.light = dl;
+  nz(2.4, 0.07, 'bandpass', 800, 1.1);
+}
+function endFinale() {
+  if (gameDone) return;
+  fadeToWhite(() => {
+    gameDone = true;
+    winH2.textContent = 'PORTAL 3';
+    winLine.textContent = 'THE REVOLUTION BELOW - THE END. Thank you for playing.';
+    winEl.style.backgroundImage = 'url(assets/title.jpg)';
+    winShow(); sfxSting();
+    if (document.pointerLockElement) document.exitPointerLock();
+    setTimeout(() => { fadeblkT = 1; }, 1200); // ease the white out behind the card
+    setTimeout(() => {
+      winHide();
+      setTimeout(() => {
+        winH2.textContent = 'POST-CREDITS';
+        winLine.textContent = 'WHEATLEY, in orbit: "...Was that a portal? Seriously, was that - oh, I am SO sorry about everything!"';
+        winEl.style.backgroundImage = '';
+        winShow();
+      }, 560);
+    }, 8000);
+  });
+}
 const texLoader = new THREE.TextureLoader(); const texCache = {};
 function getTex(url) { if (!texCache[url]) { texCache[url] = texLoader.load(url); texCache[url].colorSpace = THREE.SRGBColorSpace; } return texCache[url]; }
 const actEl = document.getElementById('actcard');
@@ -654,6 +692,10 @@ let transitioning = false, gameDone = false, flickerT = 0, rescueCooldown = 0, r
 
 const winEl = document.getElementById('win');
 const winH2 = winEl.querySelector('h2');
+const fadeblkEl = document.getElementById('fadeblk');
+function winShow() { winEl.style.display = 'flex'; requestAnimationFrame(() => requestAnimationFrame(() => winEl.style.opacity = '1')); }
+function winHide() { winEl.style.opacity = '0'; setTimeout(() => { if (winEl.style.opacity === '0') winEl.style.display = 'none'; }, 470); }
+let fadeblkT = 0;
 const winLine = document.getElementById('winline');
 const titleEl = document.getElementById('title');
 
@@ -678,6 +720,7 @@ function loadLevel(idx) {
   triggers = (levelDef.triggers || []).map(t => ({ ...t, fired: false }));
   transitioning = false;
 
+  namedMeshes = {};
   for (const b of levelDef.boxes) addBox(b[0], b[1], b[2], b[3], b[4], b[5], M[b[6]], b[7] || {});
   for (const f of (levelDef.doorFrames || [])) { // 4-bar hollow frame (solid slab occludes portal views)
     const [fx, fy, fz] = f;
@@ -794,6 +837,7 @@ function loadLevel(idx) {
     turrets.push({ pos: new THREE.Vector3(t.x, t.y + 0.78, t.z), yaw: t.yaw || 0, grp, eye: eyeM, laser, lockT: 0, cool: 0 });
   }
   interactDef = levelDef.interact || null; finaleActive = false; firedSteps = new Set(); appearMeshes = []; appearLights = [];
+  wheatDoor = null; whiteFade = 0; whiteDone = null;
   seaMeshes = [];
   if (levelDef.sea) {
     const sm = new THREE.Mesh(new THREE.BoxGeometry(levelDef.sea[3], 0.12, levelDef.sea[4]), M.sea);
@@ -853,7 +897,9 @@ function loadLevel(idx) {
   for (const l of (levelDef.intro || [])) say(l[0], l[1], l[2]);
   if (levelDef.actCard) showActCard(levelDef.actCard);
   titleEl.textContent = levelDef.title;
-  winEl.style.display = 'none';
+  winHide();
+  fadeblkEl.style.background = '#000';
+  fadeblkT = 0.55;
   if (!DEBUG) { try { localStorage.setItem('p3level', String(idx)); } catch (e) {} }
 }
 
@@ -1109,16 +1155,31 @@ function updateLevel(dt) {
       if (st.say) for (const l of st.say) say(l[0], l[1], l[2]);
       if (st.env) applyEnv(st.env);
       if (st.fx === 'flicker') flickerT = 2.4;
+      if (st.fx === 'wheatdoor') startWheatDoor();
+      if (st.tone) tone(st.tone[0], st.tone[1], st.tone[2], st.tone[3], st.tone[4]);
       if (st.teleport) { player.pos.set(...st.teleport); player.vel.set(0, 0, 0); if (st.yaw != null) { player.yaw = st.yaw; player.pitch = 0; } }
       if (st.card) {
         winH2.textContent = st.card[0]; winLine.textContent = st.card[1] || '';
         winEl.style.backgroundImage = st.card[2] ? 'url(' + st.card[2] + ')' : '';
-        winEl.style.display = 'flex';
+        winShow();
         if (document.pointerLockElement) document.exitPointerLock();
         sfxSting();
       }
       if (st.audio) setAmbience(st.audio);
       if (st.done) gameDone = true;
+    }
+    if (wheatDoor && !gameDone) {
+      if (wheatDoor.t < 1) {
+        wheatDoor.t = Math.min(1, wheatDoor.t + dt / 2.2);
+        const e = wheatDoor.t * wheatDoor.t * (3 - 2 * wheatDoor.t); // smoothstep
+        wheatDoor.mesh.position.y = 1.4 - e * 2.85;
+        wheatDoor.glow.material.opacity = e * 0.95;
+        wheatDoor.light.intensity = e * 30;
+      } else if (!wheatDoor.fired) {
+        const ftw = clock.elapsedTime - finaleT0;
+        const walked = player.pos.x > 45.72 && Math.abs(player.pos.z) < 1.15 && player.pos.y > -0.5 && player.pos.y < 3.2;
+        if (walked || ftw > wheatDoor.openFt + 22) { wheatDoor.fired = true; endFinale(); }
+      }
     }
   }
   if (!transitioning && !gameDone && exitDef && inBox(exitDef.box, player.pos)) {
@@ -1131,7 +1192,7 @@ function updateLevel(dt) {
         winH2.textContent = exitDef.endTitle || 'ACT COMPLETE';
         winLine.textContent = exitDef.endLine || '';
         winEl.style.backgroundImage = '';
-        winEl.style.display = 'flex'; sfxChime();
+        winShow(); sfxChime();
         if (document.pointerLockElement) document.exitPointerLock();
       } else {
         const t = (performance.now() - levelT0) / 1000;
@@ -1143,7 +1204,7 @@ function updateLevel(dt) {
         } catch (e) {}
         winH2.textContent = 'TEST CHAMBER COMPLETE';
         winLine.innerHTML = levelDef.title + '<br><span class="wintime">time ' + fmtT(t) + ' \u00B7 par ' + fmtT(par) + ' \u00B7 best ' + fmtT(best) + '</span>';
-        winEl.style.display = 'flex';
+        winShow();
         sfxChime();
         if (t <= par) say('GLaDOS', t < par * 0.7 ? 'Under par. I have updated the par. There was no par.' : 'Par time achieved. The Enrichment Center is legally required to be impressed.', 4);
         else if (t > par * 2) say('GLaDOS', 'The par time was ' + fmtT(par) + '. You took ' + fmtT(t) + '. I am not angry. I am just taking notes.', 4.5);
@@ -1267,6 +1328,12 @@ function tick() {
   const sp = player.vel.length();
   speedvigEl.style.opacity = Math.max(0, Math.min(0.55, (sp - 6.5) * 0.055)).toFixed(3);
   if (tpFlashT > 0) { tpFlashT = Math.max(0, tpFlashT - dt * 2.4); }
+  if (fadeblkT > 0) { fadeblkT = Math.max(0, fadeblkT - dt * 1.6); fadeblkEl.style.opacity = fadeblkT.toFixed(3); if (fadeblkT === 0) fadeblkEl.style.background = '#000'; }
+  if (whiteFade > 0) {
+    whiteFade = Math.min(1, whiteFade + dt / 1.4);
+    fadeblkEl.style.opacity = whiteFade.toFixed(3);
+    if (whiteFade >= 1 && whiteDone) { const cb = whiteDone; whiteDone = null; cb(); }
+  }
   tpflashEl.style.opacity = tpFlashT.toFixed(3);
   vmUpdate(dt);
 
