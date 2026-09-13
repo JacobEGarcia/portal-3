@@ -490,11 +490,11 @@ export const LEVELS = [
 {
   id: 'ch13', title: 'CHAMBER 13 - ERA-SHIFT',
   audio: 'salt',
-  env: { bg: 0x0a0806, fog: 0x0a0806, fogNear: 16, fogFar: 62, hemiSky: 0x8a97b8, hemiGround: 0x261b10, hemiInt: 0.55, sunInt: 0.25 },
+  env: { bg: 0x0a0806, fog: 0x0a0806, fogNear: 16, fogFar: 62, hemiSky: 0x8a97b8, hemiGround: 0x2e2214, hemiInt: 0.85, sunInt: 0.4 },
   start: { pos: [0, 0.9, 6], yaw: 0 },
   rescueY: -7.05,
   pitLight: [0, -5, -7],
-  lights: [[0, 6, 4, 0xffc27a, 1.3, 15], [0, 7, -16, 0xffc27a, 1.4, 16], [0, 1, -7, 0x7fb8ff, 0.6, 14], [0, 4.5, -7, 0xffc27a, 1.7, 18]],
+  lights: [[0, 6, 4, 0xffc27a, 1.3, 15], [0, 7, -16, 0xffc27a, 1.4, 16], [0, 1, -7, 0x7fb8ff, 0.9, 16], [0, 4.5, -7, 0xffc27a, 1.7, 18], [-3, -3, -7, 0x7fb8ff, 1.0, 14], [3, -1, -2, 0xffc27a, 0.8, 12]],
   boxes: [
     [0, -0.25, 4,     14, 0.5, 8,  'rock'],                           // start floor y=0 z:[0,8]
     [0, -8.25, -7,    14, 0.5, 14, 'rock'],                           // shaft floor y=-8 z:[-14,0]
@@ -566,7 +566,7 @@ export const LEVELS = [
     [40, 3, -4.25,    12, 6, 0.5,   'woodDark'],
     [40, 3, 4.25,     12, 6, 0.5,   'woodDark'],
     [40, 6.25, 0,     12, 0.5, 8,   'woodDark'],
-    [45.9, 1.4, 0,    0.25, 2.8, 1.9, 'door', { noCollide: true }],   // the door, closed
+    [45.9, 1.4, 0,    0.25, 2.8, 1.9, 'door', { noCollide: true, id: 'wheatdoor' }], // the door, closed
   ],
   deco: [{ sphere: [0, 7.2, -8.5, 1.3, 'brass'], appear: true }, { sphere: [-2.5, 6.2, -8, 0.5, 'brass'], appear: true }, { sphere: [2.5, 6.2, -8, 0.5, 'brass'], appear: true }],
   posters: [{ img: 'assets/beach.jpg', pos: [0, 3.4, -15.88], rotY: 0, w: 11, h: 5.2, vanish: true },
@@ -590,12 +590,11 @@ export const LEVELS = [
       { t: 0,  say: [['CAVE', 'Whoa. WHOA. Hand off the plug, sweetheart. Let us be civilized about this.', 5]] },
       { t: 5,  say: [['CAVE', 'I will give you the beach again! TWO beaches! With a lemonade stand! Combustible lemons only, but still!', 5]] },
       { t: 10, say: [['CAVE', '...Forty years down here. Reruns in a box. You tell Caroline - you tell her the science got away from me.', 6]] },
-      { t: 16, env: { bg: 0x050403, fog: 0x050403, fogNear: 10, fogFar: 40, hemiSky: 0x4a5468, hemiGround: 0x100a06, hemiInt: 0.28, sunInt: 0.1 }, fx: 'flicker', say: [['CAVE', 'Caroline... the lemons... were worth it...', 5]] },
+      { t: 16, env: { bg: 0x050403, fog: 0x050403, fogNear: 10, fogFar: 40, hemiSky: 0x4a5468, hemiGround: 0x100a06, hemiInt: 0.28, sunInt: 0.1 }, fx: 'flicker', tone: [140, 30, 'sawtooth', 5, 0.13], say: [['CAVE', 'Caroline... the lemons... were worth it...', 5]] },
       { t: 21, say: [['GLaDOS', 'It is done. ...He was a monster. He was also the only one who ever said thank you.', 6]] },
-      { t: 27, teleport: [37, 0.9, 0], yaw: -1.5708, audio: 'wheat', env: { bg: 0xf0b060, fog: 0xe8a858, fogNear: 20, fogFar: 70, hemiSky: 0xffd9a0, hemiGround: 0x7a5a20, hemiInt: 0.85, sunInt: 1.1 }, say: [['GLaDOS', 'You can go, Mel. Really. The door only locks from my side.', 6]] },
-      { t: 33, say: [['BETTY', 'Release disclaimer: extended relaxation may cause temporal confusion, moon sickness, and rectal bleeding, in puppies. Sign here.', 6]] },
-      { t: 39, card: ['PORTAL 3', 'THE REVOLUTION BELOW - THE END. Thank you for playing.', 'assets/title.jpg'] },
-      { t: 47, card: ['POST-CREDITS', 'WHEATLEY, in orbit: "...Was that a portal? Seriously, was that - oh, I am SO sorry about everything!"'], done: true },
+      { t: 27, teleport: [37, 0.9, 0], yaw: -1.5708, tone: [200, 600, 'sine', 1.4, 0.1], audio: 'wheat', env: { bg: 0xf0b060, fog: 0xe8a858, fogNear: 20, fogFar: 70, hemiSky: 0xffd9a0, hemiGround: 0x7a5a20, hemiInt: 0.85, sunInt: 1.1 }, say: [['GLaDOS', 'You can go, Mel. Really. The door only locks from my side.', 6]] },
+      { t: 33, fx: 'wheatdoor', tone: [160, 320, 'sawtooth', 2.4, 0.09], say: [['BETTY', 'Release disclaimer: extended relaxation may cause temporal confusion, moon sickness, and rectal bleeding, in puppies. Sign here.', 6]] },
+      // the door is open - walk out into the light. game.js fires the end cards on walk-out (or after a long dawdle).
     ],
   },
   win: [],
